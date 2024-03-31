@@ -13,13 +13,13 @@ def generate_concatenations(name, surname, conventions, include_numbers=False):
     concatenations = []
     convention_symbols = {
         'dot': '.',
-        'slash': '-',
+        'dash': '-',
         'underscore': '_',
     }
 
     for conv in conventions:
         if conv == 'all':
-            conv_list = ['dot', 'slash', 'underscore']
+            conv_list = ['dot', 'dash', 'underscore']
         else:
             conv_list = [conv]
 
@@ -89,8 +89,15 @@ def generate_concatenations(name, surname, conventions, include_numbers=False):
     return concatenations
 
 
+
 def generate_user_combinations(filename, output_file, include_numbers=False, conventions=['dot']):
     try:
+        if os.path.exists(output_file):
+            choice = input(RED + f"The output file '{output_file}' already exists. Do you want to overwrite it?" + END + GREEN + " (y/N): " + END)
+            if choice.lower() != 'y':
+                print("Exiting without overwriting the file. You can use -o to specify a different output file.")
+                sys.exit(0)
+
         with open(filename, 'r') as f, open(output_file, 'w') as out_file:
             for line in f:
                 name, surname = line.strip().lower().split()
@@ -98,21 +105,15 @@ def generate_user_combinations(filename, output_file, include_numbers=False, con
 
                 for concat_string in concatenations:
                     out_file.write(f"{concat_string}\n")
-
+                    
+        print(GREEN + "\nGenerated combinations saved to --> " + END + YELLOW + f"{output_file}" + END + BLUE + "\nHappy Hacking!" + END)
+          
     except FileNotFoundError:
         print(RED + f"\nInput file '{filename}' not found." + END)
         sys.exit(1)
     except Exception as e:
         print(RED + "An error occurred:", e + END)
         sys.exit(1)
-
-    if os.path.exists(output_file):
-        choice = input(RED + f"The output file '{output_file}' already exists. Do you want to overwrite it?" + END + GREEN + " (y/N): " + END)
-        if choice.lower() != 'y':
-            print("Exiting without overwriting the file. You can use -o to specify a different output file.")
-            sys.exit(0)
-
-        print(GREEN + "\nGenerated combinations saved to --> " + END + YELLOW + f"{output_file}" + END + BLUE + "\nHappy Hacking!" + END)
 
 def signal_handler(sig, frame):
     print(RED + '\n[!] Exiting...' + END)
@@ -122,15 +123,18 @@ signal.signal(signal.SIGINT, signal.SIG_DFL)
 
 def main():
     if len(sys.argv) < 2:
+        print("\nUsage: [usergenerator.py] [userlistFile] [options]")
+
+
         print(RED + '\n[!] Careful, if the output file exists, it will be overwritten (generated_users.txt by default)' + END)
         print(GREEN + '[!] Name and surname in the user list should be separated by a space' + END)
 
-        print("\nUsage: [usergenerator.py] [userlistFile] [options]\n")
-        print('Example usage: python3 usernamegenerator.py users.txt \n')
-        print("-c {all}{dot}{slash}{underscore} --> Specify a convention used in concatenations (Can use multiple)")
+        print(BLUE + 'Example usage:' + END + ' python3 usernamegenerator.py users.txt')
+        print(BLUE + 'Example usage:' + END + ' python3 usernamegenerator.py users.txt -c dot underscore -o output_file.txt\n')
+
+        print("-c {all}{dot}{dash}{underscore} --> Specify a convention used in concatenations (Can use multiple)")
         print('-n --> Generate combinations using numbers from 0 to 999 at the end of the string, off by default')
         print('-o --> Output file (Default: generated_users.txt)')
-        print('-s --> Surname concatenation (Uses a second list of surnames, in case you only have a list of names)')
 
         sys.exit(0)
 
@@ -151,26 +155,38 @@ def main():
 
     if '-c' in sys.argv:
         try:
-            convention_index = sys.argv.index('-c') if '-c' in sys.argv else sys.argv.index('--convention')
+            convention_index = sys.argv.index('-c')
             conventions_args = sys.argv[convention_index + 1:]
             conventions = []
-
+                  
+            # If convention == duplicate, ignore.
+            seen = set()
             for arg in conventions_args:
                 if arg.startswith('-'):
                     break
-                conventions.append(arg)
+                if arg not in seen:
+                    conventions.append(arg)
+                    seen.add(arg)
+                else:
+                    print(RED + f"\nRepeated convention detected --> {seen} Interrupted to avoid filling your disk!" + END)
+                    sys.exit(1)
+
+            # If conventions > 2, ignore. Redundancy because I care for the user.
+            if len(conventions) > 3:
+                print(RED + "\nToo many conventions. Use 1,2 or ALL. Interrupted to avoid filling your disk!" + END)
+                sys.exit(1)
+
 
             # Check if user input is valid
-            valid_conventions = {'dot', 'slash', 'underscore', 'all'}
+            valid_conventions = {'dot', 'dash', 'underscore', 'all'}
             if not all(convention in valid_conventions for convention in conventions):
-                print(RED + "\nInvalid convention." + END + GREEN + " Available options: all, dot, slash, underscore" + END + BLUE + " (I will use dot by default)" + END)
+                print(RED + "\nInvalid convention." + END + GREEN + " Available options: all, dot, dash, underscore" + END + BLUE + " (I will use dot by default)" + END)
                 sys.exit(1)
         except IndexError:
             print("Convention name is missing after -c")
             sys.exit(1)
     else:
         conventions = ['dot']
-
 
     generate_user_combinations(input_file, output_file, include_numbers, conventions)
 

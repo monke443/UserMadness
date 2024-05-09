@@ -1,2 +1,2 @@
 # UserMadness
-Generates username lists based on standard conventions.
+Generates possible AD usernames based on standard conventions.
